@@ -1,6 +1,5 @@
 {
-  "rewrites": [
-    { "source": "/informe-inv-byr", "destination": "/" },
-    { "source": "/informe-inv-byr/:path*", "destination": "/:path*" }
+  "redirects": [
+    { "source": "/", "destination": "/informe-inv-byr/", "permanent": false }
   ]
 }

@@ -1381,7 +1381,7 @@ function renderDonut() {
     INCLUIR: st ? st.INCLUIR : 0,
     OK: st ? st.OK : 0
   };
-  const colors = { ELIMINAR: '#d33f46', INCLUIR: '#087a54', OK: '#c9c9da' };
+  const colors = { ELIMINAR: 'var(--red)', INCLUIR: 'var(--green)', OK: 'var(--c-ok)' };
 
   let acc = 0;
   const stops = [];
@@ -3041,7 +3041,7 @@ function showAuthError(message, ok) {
   el.hidden = false;
   el.textContent = message;
   el.style.background = ok ? 'var(--green-soft)' : '';
-  el.style.color = ok ? '#0a7a53' : '';
+  el.style.color = ok ? 'var(--green-ink)' : '';
 }
 
 async function submitAuth(mode, email, password) {
@@ -3434,6 +3434,28 @@ function bindEvents() {
 
   const help = $('#btnHelp');
   if (help) help.addEventListener('click', showHelp);
+
+  // Modo claro / oscuro: alterna data-theme en <html> y recuerda la elección.
+  const themeBtn = $('#themeToggle');
+  if (themeBtn) {
+    const paint = () => {
+      const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+      themeBtn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+      themeBtn.title = dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+    };
+    paint();
+    themeBtn.addEventListener('click', () => {
+      const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+      if (dark) {
+        document.documentElement.removeAttribute('data-theme');
+        try { localStorage.setItem('byr.theme', 'light'); } catch (e) {}
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        try { localStorage.setItem('byr.theme', 'dark'); } catch (e) {}
+      }
+      paint();
+    });
+  }
 
   const save = $('#btnSaveCorte');
   if (save) save.addEventListener('click', openSaveModal);
