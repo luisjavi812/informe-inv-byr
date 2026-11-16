@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/informe-inv-byr", "destination": "/" },
+    { "source": "/informe-inv-byr/:path*", "destination": "/:path*" }
+  ]
+}
