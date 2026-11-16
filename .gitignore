@@ -1,0 +1,19 @@
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+*.swp
+
+# Despliegue
+.vercel/
+.netlify/
+
+# Dependencias locales (la app no las necesita)
+node_modules/
+npm-debug.log*
+
+# Archivos de prueba / salidas temporales
+*.log
