@@ -2460,6 +2460,57 @@ async function getSupabase() {
   return client;
 }
 
+/* Puente de sesión del portal: si el usuario ya inició sesión en
+   problemacero.com (cookie de Supabase legible por JS), la app lo reconoce
+   y no le pide entrar de nuevo — igual que las micro-apps del portal. */
+async function bridgePortalSession(sb) {
+  try {
+    const url = getConfig().url;
+    const ref = String(url || '').replace(/^https?:\/\//, '').split('.')[0];
+    if (!ref) return false;
+    const base = 'sb-' + ref + '-auth-token';
+
+    const readCookie = name => {
+      const raw = document.cookie.split('; ').find(c => c.startsWith(name + '='));
+      return raw ? decodeURIComponent(raw.split('=').slice(1).join('=')) : null;
+    };
+
+    let value = readCookie(base);
+    if (!value) {
+      // Sesión partida en chunks (sb-{ref}-auth-token.0, .1, ...)
+      const chunks = [];
+      for (let i = 0; i < 40; i++) {
+        const c = readCookie(base + '.' + i);
+        if (c == null) break;
+        chunks.push(c);
+      }
+      if (chunks.length) value = chunks.join('');
+    }
+    if (!value) return false;
+
+    let session = null;
+    if (value.startsWith('base64-')) value = value.slice(7);
+    try {
+      session = JSON.parse(value);
+    } catch (e) {
+      let b64 = value.replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      session = JSON.parse(decodeURIComponent(Array.prototype.map.call(atob(b64), c =>
+        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+    }
+    if (!session || !session.access_token || !session.refresh_token) return false;
+
+    const { data, error } = await sb.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token
+    });
+    if (error || !data || !data.user) return false;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function initAuth() {
   if (!isSupabaseConfigured()) {
     state.auth.configured = false;
@@ -2470,7 +2521,15 @@ async function initAuth() {
     const sb = await getSupabase();
     if (!sb) return;
     const { data } = await sb.auth.getSession();
-    state.auth.user = data && data.session ? data.session.user : null;
+    let session = data && data.session ? data.session : null;
+    if (!session) {
+      const bridged = await bridgePortalSession(sb);
+      if (bridged) {
+        const again = await sb.auth.getSession();
+        session = again && again.data ? again.data.session : null;
+      }
+    }
+    state.auth.user = session ? session.user : null;
     state.auth.configured = true;
     syncIdentity();
     if (state.ui.view === 'historial') renderHistory();
@@ -2915,7 +2974,8 @@ function authPanelHtml() {
     <div class="card auth-panel">
       <span class="chip chip--primary">Supabase · historial</span>
       <h2>${mode === 'signup' ? 'Crea tu cuenta de trabajo' : 'Inicia sesión para continuar'}</h2>
-      <p>Los cortes se guardan por usuario y las políticas RLS impiden que otros vean tu historial.</p>
+      <p>Usa el <strong>mismo correo y contraseña de problemacero.com</strong>: es tu misma cuenta (un solo usuario para todo el portal). Si ya iniciaste sesión en el sitio, la app te reconoce automáticamente.</p>
+      <p class="muted small" style="margin-top:6px">Los cortes se guardan por usuario y las políticas RLS impiden que otros vean tu historial.</p>
       <div class="auth-tabs">
         <button type="button" data-mode="login" class="${mode === 'login' ? 'is-active' : ''}">Ingresar</button>
         <button type="button" data-mode="signup" class="${mode === 'signup' ? 'is-active' : ''}">Crear cuenta</button>
