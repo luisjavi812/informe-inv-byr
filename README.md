@@ -35,11 +35,13 @@ Además:
 
 ```
 byr-inventario/
-├── index.html          # estructura de la interfaz
-├── styles.css          # diseño responsive (lavanda + azul)
-├── app.js              # parseo, comparación, render, historial
+├── informe-inv-byr/      # la app (se sirve bajo esta ruta)
+│   ├── index.html        # estructura de la interfaz
+│   ├── styles.css        # diseño responsive con modo claro/oscuro
+│   └── app.js            # parseo, comparación, render, historial, tema
+├── guia/                 # guía GuíaFlow del despliegue
 ├── supabase/
-│   └── schema.sql      # tablas, índices, RLS y permisos
+│   └── schema.sql        # tablas, índices, RLS y permisos
 └── README.md
 ```
 
@@ -166,7 +168,7 @@ cd byr-inventario
 python -m http.server 8765
 ```
 
-Abre `http://127.0.0.1:8765`.
+Abre `http://127.0.0.1:8765/informe-inv-byr/` (la app vive dentro de esa carpeta; sus rutas de CSS/JS son absolutas con ese prefijo).
 
 Alternativas: `npx serve .`, la extensión Live Server de VS Code, etc.
 
