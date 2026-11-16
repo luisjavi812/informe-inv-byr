@@ -174,37 +174,30 @@ Alternativas: `npx serve .`, la extensión Live Server de VS Code, etc.
 
 ## Publicar en GitHub + Vercel
 
-### 1. Subir a GitHub
+### URLs en producción
+
+| URL | Qué es |
+| --- | --- |
+| **https://problemacero.com/informe-inv-byr** | La ruta bonita (proxy del sitio principal a Vercel). |
+| https://informe-inv-byr.vercel.app | El proyecto directo de Vercel (mismo contenido). |
+| https://github.com/luisjavi812/informe-inv-byr | El código fuente. |
+| https://informe-inv-byr.vercel.app/guia | Guía GuíaFlow del despliegue. |
+
+### Cómo publicar un cambio
 
 ```powershell
 cd byr-inventario
-git init
-git add .
-git commit -m "BYR: depuración semanal de inventario"
+git add -A
+git commit -m "Cambio: descripción"
+git push
+npx vercel --prod
 ```
 
-Crea un repositorio vacío en GitHub y conecta:
+El rewrite de `problemacero.com` apunta al proyecto de Vercel, así que con eso la ruta bonita se actualiza sola (un único repositorio fuente).
 
-```powershell
-git remote add origin https://github.com/TU-USUARIO/byr-inventario.git
-git branch -M main
-git push -u origin main
-```
+Si prefieres despliegue automático al hacer `git push`: en Vercel → Project `informe-inv-byr` → Settings → Git → conecta el repo y desactiva en Settings → Deployment Protection cualquier protección de SSO para producción.
 
-### 2. Desplegar en Vercel
-
-1. Entra a [vercel.com](https://vercel.com) → **Add New → Project**.
-2. Importa el repositorio `byr-inventario`.
-3. Configuración:
-   - **Framework Preset:** Other
-   - **Build Command:** vacío
-   - **Output Directory:** `.` (o déjalo vacío)
-   - **Install Command:** vacío
-4. **Deploy**.
-
-Cada `git push` a `main` genera un despliegue nuevo. La app es 100 % estática, así que no necesita variables de entorno ni funciones serverless.
-
-Si prefieres GitHub Pages: **Settings → Pages → Deploy from a branch → main / (root)**.
+> La ruta bonita depende de dos piezas en el repo `Portal-apps`: el rewrite en `next.config.ts` (PR #1) y la ruta pública en `src/lib/supabase/proxy.ts` (PR #2). Si algún día deja de responder, revisa que esas dos líneas sigan ahí.
 
 ---
 
