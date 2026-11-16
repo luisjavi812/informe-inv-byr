@@ -17,3 +17,6 @@ npm-debug.log*
 
 # Archivos de prueba / salidas temporales
 *.log
+
+.vercel
+.env*
