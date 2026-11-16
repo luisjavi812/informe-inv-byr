@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Guía · Publicar Informe BYR en problemacero.com/informe-inv-byr</title>
+<meta name="description" content="Guía GuíaFlow paso a paso (para niños de 8 años) para subir la app de depuración de inventario BYR a GitHub y Vercel." />
+<meta name="theme-color" content="#ececf5" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #f1f1f9;
+    --card: #ffffff;
+    --ink: #17171f;
+    --ink2: #46465a;
+    --muted: #8a8a9e;
+    --line: #e8e8f2;
+    --indigo: #4f46e5;
+    --indigo-soft: #eeedff;
+    --amber-soft: #fff3d6;
+    --amber-ink: #7a5200;
+    --green-soft: #e3f7ee;
+    --green-ink: #0a7a54;
+    --code: #17172a;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  [hidden] { display: none !important; }
+  body { background: var(--bg); color: var(--ink); font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; line-height: 1.55; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .crumb { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ink2); text-decoration: none; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 9px 16px; box-shadow: 0 1px 2px rgba(21,21,31,.04); }
+  .crumb:hover { color: var(--indigo); border-color: #d9d8f6; }
+  .topbar__actions { display: flex; gap: 8px; }
+  .chipbtn { font-size: 12.5px; font-weight: 700; color: var(--ink2); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; cursor: pointer; }
+  .chipbtn:hover { color: var(--indigo); border-color: #d9d8f6; }
+
+  .hero { background: var(--card); border: 1px solid var(--line); border-radius: 26px; padding: 30px 28px; box-shadow: 0 1px 2px rgba(21,21,31,.04), 0 18px 40px -32px rgba(21,21,60,.5); }
+  .badge { display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--indigo); background: var(--indigo-soft); border-radius: 999px; padding: 7px 13px; }
+  .hero h1 { font-size: clamp(26px, 5vw, 36px); letter-spacing: -.03em; line-height: 1.15; margin: 14px 0 10px; }
+  .hero p.sub { color: var(--ink2); font-size: 15.5px; max-width: 62ch; }
+  .metas { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .meta { font-size: 12px; font-weight: 600; color: var(--ink2); background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; }
+  .urlbox { margin-top: 18px; background: var(--indigo-soft); border: 1px dashed #c9c7f8; border-radius: 14px; padding: 12px 16px; font-weight: 700; color: var(--indigo); word-break: break-all; font-size: 14px; }
+
+  .step { background: var(--card); border: 1px solid var(--line); border-radius: 26px; padding: 26px 26px 24px; margin-top: 18px; box-shadow: 0 1px 2px rgba(21,21,31,.04), 0 18px 40px -32px rgba(21,21,60,.5); }
+  .step__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .steptag { font-size: 11.5px; font-weight: 900; letter-spacing: .08em; color: var(--indigo); background: var(--indigo-soft); border-radius: 999px; padding: 7px 13px; }
+  .stepnum { font-size: 12px; font-weight: 700; color: var(--muted); }
+  .step h2 { font-size: clamp(20px, 3.4vw, 25px); letter-spacing: -.02em; margin-top: 14px; line-height: 1.2; }
+  .step > p.what { color: var(--ink2); font-size: 14.5px; margin-top: 6px; }
+
+  .kid { margin-top: 16px; background: var(--amber-soft); border: 1px solid #f2dfae; border-radius: 16px; padding: 14px 16px; font-size: 14px; color: var(--amber-ink); }
+  .kid b.tag { display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+
+  .place { margin-top: 14px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+  .where { margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .where .lbl { font-size: 12.5px; font-weight: 800; color: var(--ink2); }
+  code.cmd { display: inline-block; background: var(--code); color: #d7e3ff; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; border-radius: 10px; padding: 9px 13px; white-space: pre-wrap; word-break: break-all; }
+  a.go { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 800; color: #fff; background: var(--indigo); text-decoration: none; border-radius: 999px; padding: 9px 16px; box-shadow: 0 10px 22px -12px rgba(79,70,229,.7); }
+  a.go:hover { filter: brightness(1.06); }
+
+  .quick { margin-top: 16px; }
+  .quick b.qt { display: block; font-size: 12.5px; font-weight: 800; color: var(--ink2); margin-bottom: 8px; letter-spacing: .02em; }
+  .quick ol { list-style: none; counter-reset: q; display: flex; flex-direction: column; gap: 8px; }
+  .quick li { counter-increment: q; display: flex; gap: 11px; align-items: flex-start; background: #fbfbfe; border: 1px solid var(--line); border-radius: 13px; padding: 10px 13px; font-size: 14px; color: var(--ink); }
+  .quick li::before { content: counter(q); flex: none; width: 24px; height: 24px; border-radius: 999px; background: var(--indigo-soft); color: var(--indigo); font-weight: 800; font-size: 12px; display: grid; place-items: center; margin-top: 1px; }
+  .quick li code { background: #eeefff; color: var(--indigo); font-family: ui-monospace, Consolas, monospace; font-size: 12px; border-radius: 6px; padding: 1px 6px; font-weight: 700; }
+
+  pre.block { margin-top: 12px; background: var(--code); color: #e6e9ff; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; line-height: 1.6; border-radius: 16px; padding: 16px 18px; overflow-x: auto; white-space: pre; }
+
+  .note { margin-top: 14px; background: var(--green-soft); border: 1px solid #cbeadf; border-radius: 14px; padding: 12px 15px; font-size: 13.5px; color: var(--green-ink); }
+  .warn { margin-top: 12px; background: #fdeef0; border: 1px solid #f6ccd1; border-radius: 14px; padding: 12px 15px; font-size: 13.5px; color: #a3262e; }
+
+  .cta { margin-top: 22px; background: linear-gradient(135deg, #4f46e5, #6a5cff); color: #fff; border-radius: 26px; padding: 30px 28px; text-align: center; box-shadow: 0 22px 45px -24px rgba(67,64,242,.6); }
+  .cta h2 { font-size: clamp(21px, 3.6vw, 27px); letter-spacing: -.02em; }
+  .cta p { color: #e2e1ff; margin-top: 8px; font-size: 14.5px; }
+  .cta a { display: inline-block; margin-top: 18px; background: #fff; color: var(--indigo); font-weight: 800; text-decoration: none; border-radius: 999px; padding: 12px 24px; box-shadow: 0 10px 24px -12px rgba(0,0,0,.4); }
+  .cta a:hover { transform: translateY(-1px); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+  .mini { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; }
+  .mini h3 { font-size: 14px; letter-spacing: -.01em; }
+  .mini ul { margin: 8px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--ink2); }
+  .mini li { margin-top: 5px; }
+  .mini li::marker { color: var(--indigo); font-weight: 800; }
+
+  .dict { margin-top: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 26px; padding: 22px 24px; }
+  .dict h2 { font-size: 17px; letter-spacing: -.01em; }
+  .dict .row { display: flex; gap: 10px; align-items: baseline; margin-top: 10px; font-size: 14px; color: var(--ink2); }
+  .dict .row b { color: var(--ink); flex: none; width: 120px; }
+
+  footer.foot { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 26px; }
+
+  @media (max-width: 640px) {
+    .grid2 { grid-template-columns: 1fr; }
+    .hero, .step { padding: 20px 18px; border-radius: 20px; }
+  }
+  @media print {
+    body { background: #fff; }
+    .topbar__actions, a.go { display: none !important; }
+    .step, .hero, .cta, .dict, .mini { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+    .step { margin-top: 10px; padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="crumb" href="https://problemacero.com/guias">← Volver a las Guías</a>
+    <div class="topbar__actions">
+      <button class="chipbtn" onclick="window.print()">🖨️ Imprimir / PDF</button>
+    </div>
+  </div>
+
+  <header class="hero">
+    <span class="badge">GuíaFlow Oficial • Paso a Paso Visual</span>
+    <h1>Publica el Informe BYR en internet</h1>
+    <p class="sub">La guía más fácil del mundo para llevar tu depuración de inventario desde la carpeta de Descargas hasta <strong>problemacero.com/informe-inv-byr</strong>. GitHub, Vercel y Supabase en 6 pasitos.</p>
+    <div class="metas">
+      <span class="meta">⏱️ Lectura: 8 minutos</span>
+      <span class="meta">📱 Apta para móvil</span>
+      <span class="meta">🖨️ Apta para exportar en PDF</span>
+      <span class="meta">✅ 6 Pasos Visuales</span>
+    </div>
+    <div class="urlbox">🎯 Meta final: https://problemacero.com/informe-inv-byr</div>
+  </header>
+
+  <!-- ===================== PASO 1 ===================== -->
+  <article class="step">
+    <div class="step__top"><span class="steptag">Paso 1 • La Llave</span><span class="stepnum">Paso 1 de 6</span></div>
+    <h2>Conecta la llave mágica de GitHub</h2>
+    <p class="what">Darle permiso a tu computador para guardar cosas en tu cuenta de GitHub.</p>
+    <div class="kid"><b class="tag">🧸 En palabras súper sencillas</b>
+      GitHub es como un baúl gigante en internet donde viven los juguetes de los programadores. Para abrir el baúl necesitas una llave mágica. Este comando te da un numerito secreto: lo copias, lo pegas en la página de GitHub y ¡pum!, tu computador queda autorizado.</div>
+    <p class="place">Lugar: Terminal PowerShell • En tu computador</p>
+    <div class="where">
+      <span class="lbl">DÓNDE TOCAR:</span>
+      <code class="cmd">gh auth login</code>
+    </div>
+    <div class="quick"><b class="qt">Instrucciones Rápidas:</b>
+      <ol>
+        <li>Abre PowerShell: tecla <code>Windows</code>, escribe <code>powershell</code>, Enter.</li>
+        <li>Copia y pega <code>gh auth login</code> y presiona Enter.</li>
+        <li>Escoge con las flechitas: <code>GitHub.com</code> → <code>HTTPS</code> → <code>Login with a web browser</code>.</li>
+        <li>Aparece un código de 8 letras (ejemplo: <code>AB12-CD34</code>). Cópialo.</li>
+        <li>Presiona Enter: se abre tu navegador. Pega el código y toca <strong>Authorize github</strong>.</li>
+        <li>Si te pide usuario y contraseña de GitHub, escríbelos y sigue. Verás un check verde ✓.</li>
+      </ol>
+    </div>
+  </article>
+
+  <!-- ===================== PASO 2 ===================== -->
+  <article class="step">
+    <div class="step__top"><span class="steptag">Paso 2 • El Baúl</span><span class="stepnum">Paso 2 de 6</span></div>
+    <h2>Crea el baúl y sube la maleta completa</h2>
+    <p class="what">Crear el repositorio <strong>informe-inv-byr</strong> y subir los 6 archivos con un solo hechizo.</p>
+    <div class="kid"><b class="tag">🧸 En palabras súper sencillas</b>
+      Tu app es una maleta lista (yo ya la empagué). Ahora creamos un baúl nuevo con el nombre exacto <strong>informe-inv-byr</strong> y el hechizo <code>--push</code> sube todo adentro de una sola vez.</div>
+    <p class="place">Lugar: Terminal PowerShell • Carpeta del proyecto</p>
+    <div class="where">
+      <span class="lbl">DÓNDE TOCAR:</span>
+      <code class="cmd">cd C:\Users\User\Downloads\byr-inventario
+git branch -M main
+gh repo create informe-inv-byr --public --source=. --push</code>
+    </div>
+    <div class="quick"><b class="qt">Instrucciones Rápidas:</b>
+      <ol>
+        <li>En la terminal entra a la carpeta: <code>cd C:\Users\User\Downloads\byr-inventario</code></li>
+        <li>Ponle el nombre de rama moderno: <code>git branch -M main</code></li>
+        <li>Pega el hechizo: <code>gh repo create informe-inv-byr --public --source=. --push</code> y Enter.</li>
+        <li>Espera el mensaje <code>✓ Created repository ...</code> y <code>✓ Uploaded</code>.</li>
+        <li>Abre <code>github.com/TU-USUARIO/informe-inv-byr</code>: verás tus 6 archivos brillando.</li>
+      </ol>
+    </div>
+    <div class="note">✅ Si el navegador muestra los archivos index.html, app.js y styles.css, el baúl quedó perfecto.</div>
+  </article>
+
+  <!-- ===================== PASO 3 ===================== -->
+  <article class="step">
+    <div class="step__top"><span class="steptag">Paso 3 • El Cohete</span><span class="stepnum">Paso 3 de 6</span></div>
+    <h2>Vercel enciende el cohete 🚀</h2>
+    <p class="what">Importar el repositorio en Vercel para que la app quede viva en internet.</p>
+    <div class="kid"><b class="tag">🧸 En palabras súper sencillas</b>
+      Vercel es una fábrica de cohetes. Le entregas tu baúl de GitHub y en menos de un minuto te devuelve una página web viva, con una dirección temporal: <code>informe-inv-byr.vercel.app</code>. La dirección bonita viene en el paso siguiente.</div>
+    <p class="place">Lugar: vercel.com/new • En tu navegador</p>
+    <div class="where">
+      <span class="lbl">DÓNDE TOCAR:</span>
+      <a class="go" href="https://vercel.com/new" target="_blank" rel="noopener">ABRIR VERCEL.COM/NEW 👆</a>
+    </div>
+    <div class="quick"><b class="qt">Instrucciones Rápidas:</b>
+      <ol>
+        <li>Entra a <code>vercel.com</code> con la misma cuenta con la que manejas problemacero.com (botón "Continue with GitHub" es lo más fácil).</li>
+        <li>Toca <strong>Add New… → Project</strong> y busca <code>informe-inv-byr</code> → <strong>Import</strong>.</li>
+        <li>En <strong>Framework Preset</strong> escoge <code>Other</code>. Deja vacíos Build Command y Output Directory.</li>
+        <li>Toca el botón azul <strong>Deploy</strong> y espera el confeti 🎉 (menos de 1 minuto).</li>
+        <li>Copia la dirección que te dio (ejemplo: <code>informe-inv-byr.vercel.app</code>). ¡Ya funciona!</li>
+      </ol>
+    </div>
+    <div class="note">✅ Prueba la dirección temporal en tu celular. Si abre la app con el título «Resumen del corte», el cohete voló bien.</div>
+  </article>
+
+  <!-- ===================== PASO 4 ===================== -->
+  <article class="step">
+    <div class="step__top"><span class="steptag">Paso 4 • La Dirección Bonita</span><span class="stepnum">Paso 4 de 6</span></div>
+    <h2>La puerta secreta: problemacero.com/informe-inv-byr</h2>
+    <p class="what">Hacer que tu dominio principal abra esta app en su ruta propia.</p>
+    <div class="kid"><b class="tag">🧸 En palabras súper sencillas</b>
+      problemacero.com es tu casa y el informe vive en una casita nueva (<code>informe-inv-byr.vercel.app</code>). Vamos a instalar una <strong>puerta secreta</strong>: cuando alguien toca <code>tu-casa/informe-inv-byr</code>, un mayordomo invisible lo lleva volando a la casita. El mayordomo se llama <strong>rewrite</strong>.</div>
+    <p class="place">Lugar: Repositorio problemacero.com • Archivo vercel.json o next.config</p>
+    <div class="where">
+      <span class="lbl">DÓNDE TOCAR:</span>
+      <span class="lbl" style="font-weight:600">Carpeta raíz del proyecto principal en GitHub</span>
+    </div>
+    <p class="quick" style="margin-top:12px"><b class="qt">Pega esto en <code>vercel.json</code> del proyecto principal (si no existe, créalo):</b></p>
+    <pre class="block">{
+  "rewrites": [
+    { "source": "/informe-inv-byr", "destination": "https://informe-inv-byr.vercel.app/" },
+    { "source": "/informe-inv-byr/:path*", "destination": "https://informe-inv-byr.vercel.app/:path*" }
+  ]
+}</pre>
+    <div class="quick"><b class="qt">Instrucciones Rápidas:</b>
+      <ol>
+        <li>Abre el repositorio de <strong>problemacero.com</strong> en GitHub (donde vive tu web principal).</li>
+        <li>Si ya existe <code>vercel.json</code>, agrega solo la lista <code>"rewrites"</code> dentro de las llaves. Si tu proyecto usa <code>next.config.js</code>, pon las mismas dos reglas en su sección <code>rewrites()</code>.</li>
+        <li>Guarda con <strong>Commit changes</strong> y espera el nuevo deploy (1–2 minutos).</li>
+        <li>Abre <strong>https://problemacero.com/informe-inv-byr</strong> 🎉</li>
+      </ol>
+    </div>
+    <div class="warn">⚠️ Si aún no hiciste el paso 4, mientras tanto comparte la dirección temporal del paso 3: funciona exactamente igual.</div>
+  </article>
+
+  <!-- ===================== PASO 5 ===================== -->
+  <article class="step">
+    <div class="step__top"><span class="steptag">Paso 5 • Las Llaves de Supabase</span><span class="stepnum">Paso 5 de 6</span></div>
+    <h2>El cuaderno de la nube para todo el equipo</h2>
+    <p class="what">Registrar la nueva dirección en Supabase y conectar el historial compartido.</p>
+    <div class="kid"><b class="tag">🧸 En palabras súper sencillas</b>
+      Supabase es el cuaderno mágico donde quedan guardados los cortes de cada semana para todo el equipo. Hay que decirle qué puertas tienen permiso de entrada (tu dirección bonita y la temporal), y luego pegar su llave pública dentro de la app.</div>
+    <p class="place">Lugar: supabase.com/dashboard • Tu proyecto BYR</p>
+    <div class="where">
+      <span class="lbl">DÓNDE TOCAR:</span>
+      <span class="lbl" style="font-weight:600">Authentication → URL Configuration</span>
+    </div>
+    <div class="quick"><b class="qt">Instrucciones Rápidas:</b>
+      <ol>
+        <li>En Supabase entra a <strong>Authentication → URL Configuration</strong>.</li>
+        <li><strong>Site URL:</strong> <code>https://problemacero.com/informe-inv-byr</code></li>
+        <li><strong>Redirect URLs:</strong> agrega <code>https://problemacero.com/informe-inv-byr/**</code> y <code>https://informe-inv-byr.vercel.app/**</code>.</li>
+        <li>Copia <strong>Project URL</strong> y la <strong>anon public key</strong> (Settings → API).</li>
+        <li>En la app: <strong>Ajustes → Conexión Supabase</strong>, pega los dos valores y toca <strong>Guardar y conectar</strong>.</li>
+        <li>En <strong>Historial</strong>, crea tu cuenta con tu correo. Cada usuario solo ve sus propios cortes.</li>
+      </ol>
+    </div>
+    <div class="note">✅ Sin Supabase la app igual funciona (modo local, se guarda solo en tu navegador). Con Supabase, todo el equipo comparte el historial.</div>
+  </article>
+
+  <!-- ===================== PASO 6 ===================== -->
+  <article class="step">
+    <div class="step__top"><span class="steptag">Paso 6 • La Prueba Final</span><span class="stepnum">Paso 6 de 6</span></div>
+    <h2>Guarda tu primer corte real 🏁</h2>
+    <p class="what">Cargar los archivos de esta semana y verificar los números mágicos.</p>
+    <div class="kid"><b class="tag">🧸 En palabras súper sencillas</b>
+      Es como la primera vuelta en bicicleta sin rueditas. Si ves los números correctos, todo el circuito quedó perfecto: GitHub → Vercel → tu dominio → Supabase.</div>
+    <p class="place">Lugar: La app publicada • Cualquier dispositivo</p>
+    <div class="where">
+      <span class="lbl">DÓNDE TOCAR:</span>
+      <a class="go" href="https://problemacero.com/informe-inv-byr" target="_blank" rel="noopener">ABRIR EL INFORME 👆</a>
+    </div>
+    <div class="quick"><b class="qt">Instrucciones Rápidas:</b>
+      <ol>
+        <li>Abre <strong>https://problemacero.com/informe-inv-byr</strong>.</li>
+        <li>Toca <strong>Cargar archivos</strong>: PDF del sistema + Excel del conteo físico.</li>
+        <li>Confirma la <strong>fecha de corte</strong> (ejemplo: 15/11/2026).</li>
+        <li>Verifica los números: <strong>613 a eliminar · 141 a incluir · 15 excluidas</strong>.</li>
+        <li>Toca <strong>Guardar corte</strong> y márcalo en el Historial. ¡Publicación completa!</li>
+      </ol>
+    </div>
+  </article>
+
+  <div class="cta">
+    <h2>¿Listo para publicar el informe de esta semana?</h2>
+    <p>Con la app publicada, cada corte queda archivado y la app compara contra la semana anterior: pendientes que persisten, resueltos y nuevos.</p>
+    <a href="https://problemacero.com/informe-inv-byr" target="_blank" rel="noopener">Abrir Informe BYR</a>
+  </div>
+
+  <div class="grid2">
+    <div class="mini">
+      <h3>✅ Checklist final</h3>
+      <ul>
+        <li>Repo <code>informe-inv-byr</code> visible en GitHub.</li>
+        <li>Proyecto en Vercel con <em>Framework Preset: Other</em>.</li>
+        <li>Ruta bonita abriendo la app.</li>
+        <li>Redirect URLs de Supabase configuradas.</li>
+        <li>Primer corte guardado en el Historial.</li>
+      </ul>
+    </div>
+    <div class="mini">
+      <h3>🩹 Si algo falla</h3>
+      <ul>
+        <li><strong>404 en la ruta bonita:</strong> el rewrite falta o el deploy del sitio principal no ha terminado. Espera 2 minutos.</li>
+        <li><strong>Vercel no encuentra el repo:</strong> en vercel.com → Settings → GitHub, dale acceso al repo nuevo.</li>
+        <li><strong>El PDF no carga:</strong> debe ser el PDF del sistema con texto (no escaneado como foto).</li>
+        <li><strong>Números distintos:</strong> revisa la fecha de corte en «Archivos del corte».</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="dict">
+    <h2>📚 Mini-diccionario de la guía</h2>
+    <div class="row"><b>GitHub</b><span>El baúl gigante donde vive tu app (los archivos y su historia).</span></div>
+    <div class="row"><b>Vercel</b><span>La fábrica de cohetes que convierte el baúl en una web viva.</span></div>
+    <div class="row"><b>Rewrite</b><span>La puerta secreta que manda visitas de tu dominio a la casita nueva.</span></div>
+    <div class="row"><b>Supabase</b><span>El cuaderno de la nube con el historial de cortes, protegido con tu cuenta.</span></div>
+    <div class="row"><b>Anon key</b><span>La llave pública de Supabase: puede viajar en el navegador sin peligro.</span></div>
+    <div class="row"><b>Corte</b><span>El comparativo semanal: 613 eliminar, 141 incluir y las excluidas por fecha.</span></div>
+  </div>
+
+  <footer class="foot">GuíaFlow • ProblemaCero · Guía del Informe BYR · Representaciones BYR SAS</footer>
+</div>
+</body>
+</html>
