@@ -1477,6 +1477,11 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
 [data-theme="dark"] .legend__pct,
 [data-theme="dark"] .legend b { color: var(--ink-2); }
 
+/* Icono del selector de tema: luna en claro, sol en oscuro */
+.theme-icon--sun { display: none; }
+[data-theme="dark"] .theme-icon--sun { display: block; }
+[data-theme="dark"] .theme-icon--moon { display: none; }
+
 /* Scrollbars discretas */
 * { scrollbar-width: thin; scrollbar-color: var(--scroll) transparent; }
 ::-webkit-scrollbar { width: 9px; height: 9px; }

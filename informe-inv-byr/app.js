@@ -1392,8 +1392,8 @@ function renderDonut() {
       acc += p;
     }
   });
-  if (acc < 99.99) stops.push(`#ececf4 ${acc.toFixed(2)}% 100%`);
-  donut.style.background = stops.length ? `conic-gradient(${stops.join(',')})` : 'conic-gradient(#ececf4 0 100%)';
+  if (acc < 99.99) stops.push(`var(--c-ok) ${acc.toFixed(2)}% 100%`);
+  donut.style.background = stops.length ? `conic-gradient(${stops.join(',')})` : 'conic-gradient(var(--c-ok) 0 100%)';
 
   const okPct = total ? pct(counts.OK, total) : 0;
   const valueEl = $('#donutValue');
