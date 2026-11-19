@@ -2159,11 +2159,14 @@ async function loadPhysicalFile(files) {
 /* ---- Fecha de corte (§4): se pide al cargar los archivos cuando existe una
    hoja de ingresos; su valor es editable en «Archivos del corte». ---- */
 function defaultCorteFecha() {
-  const fechas = (state.ingresos || []).map(i => i.fecha).filter(Boolean).sort();
+  const fechas = Array.from(new Set((state.ingresos || []).map(i => i.fecha).filter(Boolean))).sort();
   if (!fechas.length) return todayISO();
-  const min = fechas[0];
-  const d = new Date(min + 'T12:00:00');
-  d.setDate(d.getDate() - 1);
+  /* Si el log cubre varios días (la semana completa), el conteo físico se hizo
+     el último día: sugerir ese día. Si trae un solo día, es un log de ingresos
+     posteriores al conteo: sugerir un día antes (comportamiento original). */
+  const target = fechas.length > 1 ? fechas[fechas.length - 1] : fechas[0];
+  const d = new Date(target + 'T12:00:00');
+  if (fechas.length === 1) d.setDate(d.getDate() - 1);
   const off = d.getTimezoneOffset();
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
 }
@@ -2186,6 +2189,10 @@ function maybeAskCorteFecha() {
 
 function askCorteFecha() {
   const def = defaultCorteFecha();
+  const rango = (() => {
+    const fechas = Array.from(new Set((state.ingresos || []).map(i => i.fecha).filter(Boolean))).sort();
+    return fechas.length > 1 ? [fechas[0], fechas[fechas.length - 1]] : null;
+  })();
   openModal({
     title: 'Fecha de corte del conteo físico',
     body: `
@@ -2194,7 +2201,7 @@ function askCorteFecha() {
         <span class="field__label">Fecha de corte</span>
         <input type="date" id="askCorteFechaInput" value="${esc(def)}" />
       </label>
-      <p class="muted small">Sugerencia: ${esc(formatDate(def))} (un día antes del ingreso más antiguo del log).</p>
+      <p class="muted small">Sugerencia: ${esc(formatDate(def))}${rango ? ` · el log trae ingresos del ${esc(formatDate(rango[0]))} al ${esc(formatDate(rango[1]))} y el conteo se hizo el último día` : ' (un día después del único ingreso del log)'}. Revísala: debe ser el día en que se hizo el conteo físico.</p>
     `,
     foot: `
       <button class="btn btn--ghost" type="button" data-fecha="skip">Sin exclusiones</button>
