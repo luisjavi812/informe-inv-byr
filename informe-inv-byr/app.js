@@ -2576,9 +2576,16 @@ function showWarnings() {
 function getConfig() {
   const stored = readJSON(LS.supabase, null);
   const injected = (typeof window !== 'undefined' && window.BYR_SUPABASE) || SUPABASE_DEFAULT;
-  const url = (stored && stored.url) || injected.url || '';
-  const key = (stored && (stored.key || stored.anonKey)) || injected.anonKey || '';
-  return { url: String(url).trim(), key: String(key).trim() };
+  /* Si hay credenciales guardadas inválidas (p. ej. un correo en el campo URL),
+     se descartan y se usan las integradas por defecto. */
+  let url = (stored && stored.url) || '';
+  let key = (stored && (stored.key || stored.anonKey)) || '';
+  if (url && !/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url.replace(/\/+$/, ''))) {
+    url = '';
+    key = '';
+    try { localStorage.removeItem(LS.supabase); } catch (e) {}
+  }
+  return { url: String(url || injected.url || '').trim(), key: String(key || injected.anonKey || '').trim() };
 }
 
 function isSupabaseConfigured() {
