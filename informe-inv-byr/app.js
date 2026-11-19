@@ -1482,7 +1482,7 @@ function renderImport() {
       <div class="restore-note">
         <div>
           <strong>📋 Última comparación restaurada</strong>
-          <span>${fmt(u.stats ? u.stats.total : 0)} placas · guardada el ${esc(formatDate(u.guardado))}${u.files && u.files.sistema ? ` · ${esc(u.files.sistema)} + ${esc(u.files.fisico)}` : ''}. Es solo de consulta: vuelve a cargar los archivos para actualizarla.</span>
+          <span>${fmt(u.stats ? u.stats.total : 0)} placas · ${u.desdeCorte ? `corte guardado del ${esc(formatDate(u.corteFecha || u.guardado))}` : `guardada el ${esc(formatDate(u.guardado))}`}${u.files && u.files.sistema ? ` · ${esc(u.files.sistema)} + ${esc(u.files.fisico)}` : ''}. Es solo de consulta: vuelve a cargar los archivos para actualizarla.</span>
         </div>
         <button class="btn btn--ghost btn--sm" type="button" data-descartar-restaurado>Descartar</button>
       </div>
@@ -1624,6 +1624,7 @@ function groupedSections(rows, mode) {
       });
     }
     const sec = map.get(key);
+    if (!Object.prototype.hasOwnProperty.call(sec.counts, row.estado)) return; // estados de versiones antiguas
     sec.counts[row.estado] += 1;
     sec.rows.push(row);
   });
@@ -2309,6 +2310,47 @@ function discardUltimo() {
   state.ui.open.clear();
   renderAll();
   toast('Comparación restaurada descartada.');
+}
+
+/* Respaldo: si no hay snapshot de la última comparación, reconstrúyela desde
+   el corte guardado más reciente (modo local guarda el detalle completo). */
+function restoreDesdeCorteLocal() {
+  const cortes = readJSON(LS.cortes, []);
+  if (!cortes.length) return false;
+  const corte = sortCortes(cortes)[0];
+  const detalles = Array.isArray(corte.detalles) ? corte.detalles : [];
+  if (!detalles.length) return false;
+  const rows = detalles.map(d => [
+    d.placa_norm || normPlaca(d.placa),
+    d.estado || 'OK',
+    d.taller_sistema || '',
+    d.taller_fisico || '',
+    d.tipo || '',
+    d.codigo_r || ''
+  ]);
+  const stats = {
+    total: (corte.total_eliminar || 0) + (corte.total_incluir || 0) + (corte.total_ok || 0),
+    sistema: corte.total_sistema || 0,
+    fisico: corte.total_fisico || 0,
+    sistemaUnicos: corte.total_sistema || 0,
+    fisicoUnicos: corte.total_fisico || 0,
+    ELIMINAR: corte.total_eliminar || 0,
+    INCLUIR: corte.total_incluir || 0,
+    OK: corte.total_ok || 0,
+    excluidas: corte.total_excluidas || 0,
+    excluidasEnSistema: 0
+  };
+  writeJSON(LS.ultimo, {
+    guardado: corte.created_at || corte.fecha_corte || new Date().toISOString(),
+    corteFecha: corte.fecha_corte || '',
+    stats,
+    anomalyCount: corte.total_anomalias || 0,
+    anomalies: {},
+    rows,
+    files: { sistema: corte.archivo_sistema || '', fisico: corte.archivo_fisico || '' },
+    desdeCorte: true
+  });
+  return restoreUltimo();
 }
 
 /* ------------------------------ PORTAPAPELES ------------------------------ */
@@ -3877,6 +3919,7 @@ function bindEvents() {
 
 function boot() {
   restoreUltimo();
+  if (!state.model) restoreDesdeCorteLocal();
   bindEvents();
   renderAll();
   syncIdentity();
