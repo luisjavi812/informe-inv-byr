@@ -32,7 +32,8 @@ const SUPABASE_DEFAULT = { url: '', anonKey: '' };
 const LS = {
   testPlates: 'byr.testplates.v1',
   supabase: 'byr.supabase.v1',
-  cortes: 'byr.cortes.v1'
+  cortes: 'byr.cortes.v1',
+  ultimo: 'byr.ultimo.v1'
 };
 
 /* Estados del comparativo: sin estado "taller distinto" — si la placa está en
@@ -1466,10 +1467,28 @@ function renderImport() {
       <div class="empty-hero">
         <h3>Empieza con el corte de esta semana</h3>
         <p>Sube el PDF del sistema y el Excel del conteo físico. Todo se procesa en tu navegador: ningún archivo se envía a un servidor.</p>
+        <p class="muted small">¿Ya guardaste un corte antes? Ábrelo en <button type="button" class="link-btn" data-view="historial">Historial</button>: ahí puedes verlo y descargar el CSV con las placas a eliminar e incluir.</p>
         <div class="drops">
           ${dropHtml('sistema')}
           ${dropHtml('fisico')}
         </div>
+      </div>`;
+    return;
+  }
+
+  if (state.restaurado && !state.files.sistema && !(state.files.fisico || []).length) {
+    const u = readJSON(LS.ultimo, {}) || {};
+    host.innerHTML = `
+      <div class="restore-note">
+        <div>
+          <strong>📋 Última comparación restaurada</strong>
+          <span>${fmt(u.stats ? u.stats.total : 0)} placas · guardada el ${esc(formatDate(u.guardado))}${u.files && u.files.sistema ? ` · ${esc(u.files.sistema)} + ${esc(u.files.fisico)}` : ''}. Es solo de consulta: vuelve a cargar los archivos para actualizarla.</span>
+        </div>
+        <button class="btn btn--ghost btn--sm" type="button" data-descartar-restaurado>Descartar</button>
+      </div>
+      <div class="drops">
+        ${dropHtml('sistema')}
+        ${dropHtml('fisico')}
       </div>`;
     return;
   }
@@ -2196,12 +2215,93 @@ function askCorteFecha() {
 }
 
 function rebuild() {
-  if (!state.model && !state.system.rows.length && !state.physical.rows.length) {
+  const hasFiles = state.system.rows.length || state.physical.rows.length;
+  if (!hasFiles) {
+    // Sin archivos: conserva la comparación restaurada si la hay.
+    if (state.restaurado && state.model) {
+      saveUltimo();
+      renderAll();
+      return;
+    }
     state.model = null;
   } else {
     state.model = buildModel();
+    state.restaurado = false;
+    saveUltimo();
   }
   renderAll();
+}
+
+/* -------- Recordatorio de la última comparación (§ contra recargas) --------
+   Los archivos nunca se suben a un servidor, así que no sobreviven a un
+   recargado. Lo que SÍ se guarda en este navegador es el RESULTADO completo
+   (placas, estados, anomalías y totales): al volver, la app lo restaura en
+   modo consulta hasta que se carguen archivos nuevos. */
+
+function saveUltimo() {
+  if (!state.model || !state.model.rows.length) return;
+  const compact = state.model.rows.map(r => [r.placaNorm, r.estado, r.sysTaller || '', r.fisTaller || '', r.tipo || '', r.r || '']);
+  writeJSON(LS.ultimo, {
+    guardado: new Date().toISOString(),
+    corteFecha: state.corteFecha || '',
+    stats: state.model.stats,
+    anomalyCount: state.model.anomalyCount,
+    anomalies: state.model.anomalies,
+    rows: compact,
+    files: {
+      sistema: state.files.sistema ? state.files.sistema.name : '',
+      fisico: (state.files.fisico || []).map(f => f.name).join(' · ')
+    }
+  });
+}
+
+function restoreUltimo() {
+  const u = readJSON(LS.ultimo, null);
+  if (!u || !Array.isArray(u.rows) || !u.rows.length) return false;
+  try {
+    const rows = u.rows.map(a => ({
+      placa: a[0],
+      placaNorm: a[0],
+      r: a[5] || '',
+      estado: a[1],
+      motivo: 'Restaurado de la última comparación',
+      sysTaller: a[2] || '',
+      fisTaller: a[3] || '',
+      fisGroupKey: a[3] ? 'fis:' + a[3] : '',
+      fisGroupLabel: a[3] || '',
+      sysKey: a[2] ? 'sys:' + a[2] : '',
+      fisKey: '',
+      tipo: a[4] || 'Otro',
+      origen: 'restaurado'
+    }));
+    state.model = {
+      rows,
+      stats: u.stats,
+      sysBy: new Map(),
+      fisBy: new Map(),
+      excluded: [],
+      sections: buildSectionIndex(rows),
+      anomalies: u.anomalies || {},
+      anomalyCount: u.anomalyCount || 0,
+      restaurado: true
+    };
+    state.corteFecha = u.corteFecha || '';
+    state.restaurado = true;
+    state.ui.open.clear();
+    return true;
+  } catch (e) {
+    console.error(e);
+    return false;
+  }
+}
+
+function discardUltimo() {
+  localStorage.removeItem(LS.ultimo);
+  state.model = null;
+  state.restaurado = false;
+  state.ui.open.clear();
+  renderAll();
+  toast('Comparación restaurada descartada.');
 }
 
 /* ------------------------------ PORTAPAPELES ------------------------------ */
@@ -3357,6 +3457,8 @@ async function clearData() {
   state.corteFecha = '';
   state.importStatus = { sistema: 'empty', fisico: 'empty', message: '' };
   state.model = null;
+  state.restaurado = false;
+  localStorage.removeItem(LS.ultimo);
   state.ui.open.clear();
   renderAll();
   toast('Datos cargados vaciados.');
@@ -3479,6 +3581,15 @@ function bindEvents() {
       }
       if (e.target.closest('[data-avisos]')) {
         showWarnings();
+        return;
+      }
+      if (e.target.closest('[data-descartar-restaurado]')) {
+        discardUltimo();
+        return;
+      }
+      const historialLink = e.target.closest('[data-view="historial"]');
+      if (historialLink) {
+        setView('historial');
         return;
       }
       const drop = e.target.closest('[data-drop]');
@@ -3758,6 +3869,7 @@ function bindEvents() {
 /* ---------------------------- ARRANQUE ---------------------------- */
 
 function boot() {
+  restoreUltimo();
   bindEvents();
   renderAll();
   syncIdentity();

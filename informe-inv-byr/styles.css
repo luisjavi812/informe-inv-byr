@@ -1389,6 +1389,27 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
 .corte-fecha-row { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
 .field--inline { max-width: 220px; }
 
+/* Aviso de comparación restaurada */
+.restore-note {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  background: var(--sel-bg);
+  border: 1px solid var(--sel-border);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+.restore-note strong { display: block; font-size: 13px; }
+.restore-note span { font-size: 12px; color: var(--ink-2); }
+
+.link-btn {
+  background: none; border: 0; padding: 0;
+  color: var(--primary-ink);
+  font: inherit; font-size: inherit; font-weight: 700;
+  cursor: pointer; text-decoration: underline;
+}
+.link-btn:hover { color: var(--primary); }
+.btn--sm { padding: 6px 12px; font-size: 12px; border-radius: 9px; }
+
 /* Listas con scroll interno: degradado que avisa que hay más contenido */
 .anomalia-list, .mapping { position: relative; }
 .anomalia-list::after, .mapping::after {
