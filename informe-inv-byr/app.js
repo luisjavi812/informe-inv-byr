@@ -1468,6 +1468,7 @@ function renderImport() {
         <h3>Empieza con el corte de esta semana</h3>
         <p>Sube el PDF del sistema y el Excel del conteo físico. Todo se procesa en tu navegador: ningún archivo se envía a un servidor.</p>
         <p class="muted small">¿Ya guardaste un corte antes? Ábrelo en <button type="button" class="link-btn" data-view="historial">Historial</button>: ahí puedes verlo y descargar el CSV con las placas a eliminar e incluir.</p>
+        ${isSupabaseConfigured() && !state.auth.user ? '<p class="muted small">¿Estás en otro computador? Entra a <button type="button" class="link-btn" data-view="historial">Historial</button> e <strong>inicia sesión</strong> con tu correo: tu último corte se carga solo y verás el mismo resumen.</p>' : ''}
         <div class="drops">
           ${dropHtml('sistema')}
           ${dropHtml('fisico')}
@@ -2256,6 +2257,10 @@ function saveUltimo() {
     anomalyCount: state.model.anomalyCount,
     anomalies: state.model.anomalies,
     rows: compact,
+    excluded: (state.model.excluded || []).map(e => ({
+      placa: e.placa, placaNorm: e.placaNorm, categoria: e.categoria || '',
+      codigoR: e.codigoR || '', fecha: e.fecha || '', enSistema: !!e.enSistema, catSistema: e.catSistema || ''
+    })),
     files: {
       sistema: state.files.sistema ? state.files.sistema.name : '',
       fisico: (state.files.fisico || []).map(f => f.name).join(' · ')
@@ -2287,7 +2292,7 @@ function restoreUltimo() {
       stats: u.stats,
       sysBy: new Map(),
       fisBy: new Map(),
-      excluded: [],
+      excluded: Array.isArray(u.excluded) ? u.excluded : [],
       sections: buildSectionIndex(rows),
       anomalies: u.anomalies || {},
       anomalyCount: u.anomalyCount || 0,
@@ -2313,21 +2318,42 @@ function discardUltimo() {
 }
 
 /* Respaldo: si no hay snapshot de la última comparación, reconstrúyela desde
-   el corte guardado más reciente (modo local guarda el detalle completo). */
-function restoreDesdeCorteLocal() {
-  const cortes = readJSON(LS.cortes, []);
-  if (!cortes.length) return false;
-  const corte = sortCortes(cortes)[0];
-  const detalles = Array.isArray(corte.detalles) ? corte.detalles : [];
-  if (!detalles.length) return false;
-  const rows = detalles.map(d => [
-    d.placa_norm || normPlaca(d.placa),
-    d.estado || 'OK',
-    d.taller_sistema || '',
-    d.taller_fisico || '',
-    d.tipo || '',
-    d.codigo_r || ''
-  ]);
+   el corte guardado más reciente. Funciona tanto con el historial local
+   (localStorage) como con el de Supabase, para que el resumen aparezca igual
+   en cualquier computador donde el usuario inicie sesión. */
+function detallePlano(d) {
+  return {
+    placa: d.placa || '',
+    placaNorm: d.placa_norm || d.placaNorm || normPlaca(d.placa || ''),
+    estado: d.estado || 'OK',
+    tallerSistema: d.taller_sistema || d.tallerSistema || '',
+    tallerFisico: d.taller_fisico || d.tallerFisico || '',
+    tipo: d.tipo || '',
+    codigoR: d.codigo_r || d.codigoR || d.r || '',
+    observacion: d.observacion || ''
+  };
+}
+
+function restoreDesdeCorte(corte, detallesRaw) {
+  if (!corte || !Array.isArray(detallesRaw) || !detallesRaw.length) return false;
+  const detalles = detallesRaw.map(detallePlano);
+  const incl = [];
+  const excl = [];
+  detalles.forEach(d => {
+    if (d.estado === 'EXCLUIDA') {
+      const m = String(d.observacion || '').match(/(\d{4}-\d{2}-\d{2})/);
+      excl.push({
+        placa: d.placa, placaNorm: d.placaNorm,
+        categoria: d.tallerFisico, codigoR: d.codigoR,
+        fecha: m ? m[1] : '',
+        enSistema: /ya est[áa] en el sistema/i.test(d.observacion || ''),
+        catSistema: d.tallerSistema
+      });
+    } else {
+      incl.push([d.placaNorm, d.estado, d.tallerSistema, d.tallerFisico, d.tipo, d.codigoR]);
+    }
+  });
+  if (!incl.length) return false;
   const stats = {
     total: (corte.total_eliminar || 0) + (corte.total_incluir || 0) + (corte.total_ok || 0),
     sistema: corte.total_sistema || 0,
@@ -2337,8 +2363,8 @@ function restoreDesdeCorteLocal() {
     ELIMINAR: corte.total_eliminar || 0,
     INCLUIR: corte.total_incluir || 0,
     OK: corte.total_ok || 0,
-    excluidas: corte.total_excluidas || 0,
-    excluidasEnSistema: 0
+    excluidas: corte.total_excluidas || excl.length || 0,
+    excluidasEnSistema: excl.filter(e => e.enSistema).length
   };
   writeJSON(LS.ultimo, {
     guardado: corte.created_at || corte.fecha_corte || new Date().toISOString(),
@@ -2346,11 +2372,61 @@ function restoreDesdeCorteLocal() {
     stats,
     anomalyCount: corte.total_anomalias || 0,
     anomalies: {},
-    rows,
+    rows: incl,
+    excluded: excl,
     files: { sistema: corte.archivo_sistema || '', fisico: corte.archivo_fisico || '' },
     desdeCorte: true
   });
   return restoreUltimo();
+}
+
+function restoreDesdeCorteLocal() {
+  const cortes = readJSON(LS.cortes, []);
+  if (!cortes.length) return false;
+  const corte = sortCortes(cortes)[0];
+  if (!Array.isArray(corte.detalles) || !corte.detalles.length) return false;
+  return restoreDesdeCorte(corte, corte.detalles);
+}
+
+/* Rellena el comparativo desde el corte más reciente de Supabase (útil en un
+   computador nuevo, donde el localStorage está vacío). */
+async function fetchTodasDetalles(corte) {
+  const sb = await getSupabase();
+  if (!sb) return [];
+  let all = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await sb
+      .from('cortes_detalle')
+      .select('placa,placa_norm,estado,taller_sistema,taller_fisico,tipo,codigo_r,observacion')
+      .eq('corte_id', corte.id)
+      .range(from, from + 999);
+    if (error) throw error;
+    all = all.concat(data || []);
+    if (!data || data.length < 1000) break;
+    from += 1000;
+  }
+  return all;
+}
+
+let restoreNubeEnCurso = false;
+async function restoreDesdeNube() {
+  if (restoreNubeEnCurso) return false;
+  if (state.model || state.restaurado) return false;
+  if (!isSupabaseConfigured() || !state.auth.user) return false;
+  restoreNubeEnCurso = true;
+  try {
+    if (!state.history.loaded) await loadCortes();
+    const cortes = sortCortes(state.history.cortes || []);
+    if (!cortes.length) return false;
+    const detalles = await fetchTodasDetalles(cortes[0]);
+    return restoreDesdeCorte(cortes[0], detalles);
+  } catch (e) {
+    console.error(e);
+    return false;
+  } finally {
+    restoreNubeEnCurso = false;
+  }
 }
 
 /* ------------------------------ PORTAPAPELES ------------------------------ */
@@ -2610,6 +2686,14 @@ async function getSupabase() {
     state.history.comparison = null;
     syncIdentity();
     if (state.ui.view === 'historial') renderHistory();
+    if (state.auth.user) {
+      restoreDesdeNube().then(restaurado => {
+        if (restaurado) {
+          renderAll();
+          toast('Resumen de tu último corte cargado desde la nube.');
+        }
+      });
+    }
   });
   state.auth.client = client;
   state.auth.configured = true;
@@ -2688,6 +2772,8 @@ async function initAuth() {
     state.auth.user = session ? session.user : null;
     state.auth.configured = true;
     syncIdentity();
+    const restaurado = await restoreDesdeNube();
+    if (restaurado) renderAll();
     if (state.ui.view === 'historial') renderHistory();
   } catch (err) {
     console.error(err);
