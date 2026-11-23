@@ -2445,7 +2445,37 @@ let restoreNubeEnCurso = false;
 const PUBLIC_CORTE_URL = 'https://problemacero.com/api/informe-inv-byr/corte';
 
 async function fetchCorteCompartido() {
-  // Vía 1: endpoint del portal.
+  // Vía 1: lectura directa del corte más reciente (permiso de lectura anónima).
+  try {
+    const sb = await getSupabase();
+    if (sb) {
+      const { data: cortes, error } = await sb
+        .from('cortes')
+        .select('*')
+        .order('fecha_corte', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (!error && cortes && cortes[0]) {
+        const corte = cortes[0];
+        let detalles = [];
+        let from = 0;
+        for (;;) {
+          const { data, error: e2 } = await sb
+            .from('cortes_detalle')
+            .select('placa,placa_norm,estado,taller_sistema,taller_fisico,tipo,codigo_r,observacion')
+            .eq('corte_id', corte.id)
+            .range(from, from + 999);
+          if (e2) break;
+          detalles = detalles.concat(data || []);
+          if (!data || data.length < 1000) break;
+          from += 1000;
+        }
+        if (detalles.length) return { corte, detalles };
+      }
+    }
+  } catch (e) { /* sigue con la vía 2 */ }
+
+  // Vía 2 (respaldo): endpoint del portal.
   try {
     const r = await fetch(PUBLIC_CORTE_URL, { cache: 'no-store' });
     if (r.ok) {
@@ -2454,37 +2484,9 @@ async function fetchCorteCompartido() {
         return { corte: data.corte, detalles: Array.isArray(data.detalles) ? data.detalles : [] };
       }
     }
-  } catch (e) { /* sigue con la vía 2 */ }
+  } catch (e) { /* sin datos públicos */ }
 
-  // Vía 2: lectura directa del corte más reciente (RLS de lectura anónima).
-  try {
-    const sb = await getSupabase();
-    if (!sb) return null;
-    const { data: cortes, error } = await sb
-      .from('cortes')
-      .select('*')
-      .order('fecha_corte', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(1);
-    if (error || !cortes || !cortes[0]) return null;
-    const corte = cortes[0];
-    let detalles = [];
-    let from = 0;
-    for (;;) {
-      const { data, error: e2 } = await sb
-        .from('cortes_detalle')
-        .select('placa,placa_norm,estado,taller_sistema,taller_fisico,tipo,codigo_r,observacion')
-        .eq('corte_id', corte.id)
-        .range(from, from + 999);
-      if (e2) return null;
-      detalles = detalles.concat(data || []);
-      if (!data || data.length < 1000) break;
-      from += 1000;
-    }
-    return { corte, detalles };
-  } catch (e) {
-    return null;
-  }
+  return null;
 }
 
 async function restoreDesdeNube() {
