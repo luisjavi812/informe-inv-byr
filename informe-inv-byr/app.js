@@ -2438,18 +2438,53 @@ async function fetchTodasDetalles(corte) {
 }
 
 let restoreNubeEnCurso = false;
+
+/* Corte público (solo lectura). Se intenta por dos vías, en orden:
+   1) Endpoint del portal (no requiere cambios en la base).
+   2) Lectura directa con la llave pública (requiere permiso de lectura anónima). */
+const PUBLIC_CORTE_URL = 'https://problemacero.com/api/informe-inv-byr/corte';
+
 async function fetchCorteCompartido() {
-  const sb = await getSupabase();
-  if (!sb) return null;
-  const { data, error } = await sb
-    .from('cortes')
-    .select('*')
-    .eq('compartido', true)
-    .order('fecha_corte', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(1);
-  if (error) throw error;
-  return data && data[0] ? data[0] : null;
+  // Vía 1: endpoint del portal.
+  try {
+    const r = await fetch(PUBLIC_CORTE_URL, { cache: 'no-store' });
+    if (r.ok) {
+      const data = await r.json();
+      if (data && data.corte) {
+        return { corte: data.corte, detalles: Array.isArray(data.detalles) ? data.detalles : [] };
+      }
+    }
+  } catch (e) { /* sigue con la vía 2 */ }
+
+  // Vía 2: lectura directa del corte más reciente (RLS de lectura anónima).
+  try {
+    const sb = await getSupabase();
+    if (!sb) return null;
+    const { data: cortes, error } = await sb
+      .from('cortes')
+      .select('*')
+      .order('fecha_corte', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (error || !cortes || !cortes[0]) return null;
+    const corte = cortes[0];
+    let detalles = [];
+    let from = 0;
+    for (;;) {
+      const { data, error: e2 } = await sb
+        .from('cortes_detalle')
+        .select('placa,placa_norm,estado,taller_sistema,taller_fisico,tipo,codigo_r,observacion')
+        .eq('corte_id', corte.id)
+        .range(from, from + 999);
+      if (e2) return null;
+      detalles = detalles.concat(data || []);
+      if (!data || data.length < 1000) break;
+      from += 1000;
+    }
+    return { corte, detalles };
+  } catch (e) {
+    return null;
+  }
 }
 
 async function restoreDesdeNube() {
@@ -2466,11 +2501,10 @@ async function restoreDesdeNube() {
       const detalles = await fetchTodasDetalles(cortes[0]);
       return restoreDesdeCorte(cortes[0], detalles);
     }
-    // Sin sesión: el corte compartido (lectura pública de solo lectura).
-    const corte = await fetchCorteCompartido();
-    if (!corte) return false;
-    const detalles = await fetchTodasDetalles(corte);
-    const ok = restoreDesdeCorte(corte, detalles);
+    // Sin sesión: el informe del equipo (solo lectura) servido por el portal.
+    const pub = await fetchCorteCompartido();
+    if (!pub) return false;
+    const ok = restoreDesdeCorte(pub.corte, pub.detalles);
     if (ok) {
       const u = readJSON(LS.ultimo, null);
       if (u) { u.esCompartido = true; writeJSON(LS.ultimo, u); }
@@ -3153,7 +3187,7 @@ async function persistCorte(header, detalles) {
     const sb = await getSupabase();
     const { data, error } = await sb
       .from('cortes')
-      .insert({ ...header, user_id: user.id, compartido: true })
+      .insert({ ...header, user_id: user.id })
       .select()
       .single();
     if (error) throw error;
