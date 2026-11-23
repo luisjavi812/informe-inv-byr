@@ -1484,10 +1484,11 @@ function renderImport() {
           <h3>Conecta tu informe en este dispositivo</h3>
           <p>Tu último corte vive en la nube, no en este navegador. Inicia sesión con tu <strong>mismo correo y contraseña de problemacero.com</strong> y el informe carga solo.</p>
           <div class="activate-card__actions">
-            <button class="btn btn--primary" type="button" data-view="historial">Iniciar sesión</button>
-            <button class="btn btn--ghost" type="button" data-open-import>Cargar archivos nuevos</button>
+            <button class="btn btn--primary" type="button" data-ver-equipo>Ver informe del equipo</button>
+            <button class="btn btn--ghost" type="button" data-view="historial">Iniciar sesión</button>
+            <button class="btn btn--ghost" type="button" data-open-import>Cargar archivos</button>
           </div>
-          <p class="muted small">Si ya iniciaste sesión en problemacero.com, esta página debería reconocerte automáticamente. ¿No pasa? Entra a <button type="button" class="link-btn" data-view="historial">Historial</button> e ingresa con tu correo.</p>
+          <p class="muted small">El informe del equipo se carga solo (no necesita cuenta). También puedes entrar con tu <strong>correo y contraseña de problemacero.com</strong> para ver y guardar tus cortes.</p>
         </div>`;
       return;
     }
@@ -1509,8 +1510,8 @@ function renderImport() {
     host.innerHTML = `
       <div class="restore-note">
         <div>
-          <strong>📋 Última comparación restaurada</strong>
-          <span>${fmt(u.stats ? u.stats.total : 0)} placas · ${u.desdeCorte ? `corte guardado del ${esc(formatDate(u.corteFecha || u.guardado))}` : `guardada el ${esc(formatDate(u.guardado))}`}${u.files && u.files.sistema ? ` · ${esc(u.files.sistema)} + ${esc(u.files.fisico)}` : ''}. Es solo de consulta: vuelve a cargar los archivos para actualizarla.</span>
+          <strong>${u.esCompartido ? '🗂️ Informe del equipo (solo lectura)' : '📋 Última comparación restaurada'}</strong>
+          <span>${fmt(u.stats ? u.stats.total : 0)} placas · ${u.desdeCorte ? `corte del ${esc(formatDate(u.corteFecha || u.guardado))}` : `guardada el ${esc(formatDate(u.guardado))}`}${u.files && u.files.sistema ? ` · ${esc(u.files.sistema)} + ${esc(u.files.fisico)}` : ''}. Es solo de consulta: vuelve a cargar los archivos para actualizarla.</span>
         </div>
         <button class="btn btn--ghost btn--sm" type="button" data-descartar-restaurado>Descartar</button>
       </div>
@@ -2437,17 +2438,44 @@ async function fetchTodasDetalles(corte) {
 }
 
 let restoreNubeEnCurso = false;
+async function fetchCorteCompartido() {
+  const sb = await getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb
+    .from('cortes')
+    .select('*')
+    .eq('compartido', true)
+    .order('fecha_corte', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return data && data[0] ? data[0] : null;
+}
+
 async function restoreDesdeNube() {
   if (restoreNubeEnCurso) return false;
   if (state.model || state.restaurado) return false;
-  if (!isSupabaseConfigured() || !state.auth.user) return false;
+  if (!isSupabaseConfigured()) return false;
   restoreNubeEnCurso = true;
   try {
-    if (!state.history.loaded) await loadCortes();
-    const cortes = sortCortes(state.history.cortes || []);
-    if (!cortes.length) return false;
-    const detalles = await fetchTodasDetalles(cortes[0]);
-    return restoreDesdeCorte(cortes[0], detalles);
+    if (state.auth.user) {
+      // Con sesión: el corte más reciente del propio usuario.
+      if (!state.history.loaded) await loadCortes();
+      const cortes = sortCortes(state.history.cortes || []);
+      if (!cortes.length) return false;
+      const detalles = await fetchTodasDetalles(cortes[0]);
+      return restoreDesdeCorte(cortes[0], detalles);
+    }
+    // Sin sesión: el corte compartido (lectura pública de solo lectura).
+    const corte = await fetchCorteCompartido();
+    if (!corte) return false;
+    const detalles = await fetchTodasDetalles(corte);
+    const ok = restoreDesdeCorte(corte, detalles);
+    if (ok) {
+      const u = readJSON(LS.ultimo, null);
+      if (u) { u.esCompartido = true; writeJSON(LS.ultimo, u); }
+    }
+    return ok;
   } catch (e) {
     console.error(e);
     return false;
@@ -2804,7 +2832,8 @@ async function initAuth() {
     state.auth.configured = true;
     syncIdentity();
     const restaurado = await restoreDesdeNube();
-    if (restaurado) renderAll();
+    renderAll();
+    if (restaurado) toast('Informe cargado desde la nube.');
     if (state.ui.view === 'historial') renderHistory();
   } catch (err) {
     console.error(err);
@@ -3124,7 +3153,7 @@ async function persistCorte(header, detalles) {
     const sb = await getSupabase();
     const { data, error } = await sb
       .from('cortes')
-      .insert({ ...header, user_id: user.id })
+      .insert({ ...header, user_id: user.id, compartido: true })
       .select()
       .single();
     if (error) throw error;
@@ -3767,6 +3796,16 @@ function bindEvents() {
       }
       if (e.target.closest('[data-open-import]')) {
         openImportModal();
+        return;
+      }
+      if (e.target.closest('[data-ver-equipo]')) {
+        const btn = e.target.closest('[data-ver-equipo]');
+        btn.disabled = true;
+        btn.textContent = 'Cargando…';
+        restoreDesdeNube().then(ok => {
+          renderAll();
+          if (!ok) toast('Todavía no hay un informe compartido. Guarda un corte con tu cuenta para compartirlo.', 'err');
+        });
         return;
       }
       const drop = e.target.closest('[data-drop]');
