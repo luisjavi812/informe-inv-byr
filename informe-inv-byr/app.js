@@ -2499,9 +2499,15 @@ async function restoreDesdeNube() {
       // Con sesión: el corte más reciente del propio usuario.
       if (!state.history.loaded) await loadCortes();
       const cortes = sortCortes(state.history.cortes || []);
-      if (!cortes.length) return false;
-      const detalles = await fetchTodasDetalles(cortes[0]);
-      return restoreDesdeCorte(cortes[0], detalles);
+      if (cortes.length) {
+        const detalles = await fetchTodasDetalles(cortes[0]);
+        const ok = restoreDesdeCorte(cortes[0], detalles);
+        if (ok) return true;
+      }
+      // Sin cortes propios: mostrar el informe del equipo igual.
+      const pub = await fetchCorteCompartido();
+      if (pub) return restoreDesdeCorte(pub.corte, pub.detalles);
+      return false;
     }
     // Sin sesión: el informe del equipo (solo lectura) servido por el portal.
     const pub = await fetchCorteCompartido();
