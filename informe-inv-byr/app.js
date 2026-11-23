@@ -27,7 +27,14 @@ const CDN = {
 /* Credenciales por defecto. Se pueden dejar vacías y configurar desde
    Ajustes, o inyectar antes de cargar app.js:
    <script>window.BYR_SUPABASE = { url: '...', anonKey: '...' }</script> */
-const SUPABASE_DEFAULT = { url: '', anonKey: '' };
+/* Credenciales por defecto de Supabase (llave PUBLICA: viaja en el front-end
+   por diseño; la seguridad real la dan las políticas RLS). Van aquí además del
+   HTML para que la app se conecte aunque el navegador tenga una copia antigua
+   de index.html en caché. */
+const SUPABASE_DEFAULT = {
+  url: 'https://qdizgflguqrquxokizdl.supabase.co',
+  anonKey: 'sb_publishable_JIff3QdhaEZMqZEdweOyJw_xTIJ_VPX'
+};
 
 const LS = {
   testPlates: 'byr.testplates.v1',
@@ -80,6 +87,7 @@ const ICONS = {
   cards: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M8 4h11a2 2 0 0 1 2 2v11"/></svg>',
   link: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 14.5 14.5 9.5"/><path d="M7 13 5 15a3.5 3.5 0 0 0 5 5l2-2"/><path d="M17 11l2-2a3.5 3.5 0 0 0-5-5l-2 2"/></svg>',
   clock: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+  cloud: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18h10a4 4 0 0 0 .6-7.95 5.5 5.5 0 0 0-10.7-1.6A3.8 3.8 0 0 0 7 18z"/></svg>',
   x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>'
 };
 
@@ -1256,7 +1264,13 @@ const state = {
 
 function renderAll() {
   const empty = !(state.model && state.model.rows.length);
-  if (typeof document !== 'undefined') document.body.classList.toggle('is-empty', empty);
+  if (typeof document !== 'undefined') {
+    document.body.classList.toggle('is-empty', empty);
+    /* Sin datos y sin sesión (pero con Supabase listo): mostrar la pantalla de
+       activación en vez de un tablero en ceros que confunde. */
+    const needsAuth = empty && isSupabaseConfigured() && !state.auth.user;
+    document.body.classList.toggle('needs-auth', needsAuth);
+  }
   renderKpis();
   renderDonut();
   renderBars();
@@ -1463,12 +1477,25 @@ function renderImport() {
   const busy = status.sistema === 'loading' || status.fisico === 'loading';
 
   if (!hasData && !busy && status.sistema === 'empty' && status.fisico === 'empty') {
+    if (isSupabaseConfigured() && !state.auth.user) {
+      host.innerHTML = `
+        <div class="activate-card">
+          <span class="activate-card__icon">${ICONS.cloud || ICONS.box}</span>
+          <h3>Conecta tu informe en este dispositivo</h3>
+          <p>Tu último corte vive en la nube, no en este navegador. Inicia sesión con tu <strong>mismo correo y contraseña de problemacero.com</strong> y el informe carga solo.</p>
+          <div class="activate-card__actions">
+            <button class="btn btn--primary" type="button" data-view="historial">Iniciar sesión</button>
+            <button class="btn btn--ghost" type="button" data-open-import>Cargar archivos nuevos</button>
+          </div>
+          <p class="muted small">Si ya iniciaste sesión en problemacero.com, esta página debería reconocerte automáticamente. ¿No pasa? Entra a <button type="button" class="link-btn" data-view="historial">Historial</button> e ingresa con tu correo.</p>
+        </div>`;
+      return;
+    }
     host.innerHTML = `
       <div class="empty-hero">
         <h3>Empieza con el corte de esta semana</h3>
         <p>Sube el PDF del sistema y el Excel del conteo físico. Todo se procesa en tu navegador: ningún archivo se envía a un servidor.</p>
         <p class="muted small">¿Ya guardaste un corte antes? Ábrelo en <button type="button" class="link-btn" data-view="historial">Historial</button>: ahí puedes verlo y descargar el CSV con las placas a eliminar e incluir.</p>
-        ${isSupabaseConfigured() && !state.auth.user ? '<p class="muted small">¿Estás en otro computador? Entra a <button type="button" class="link-btn" data-view="historial">Historial</button> e <strong>inicia sesión</strong> con tu correo: tu último corte se carga solo y verás el mismo resumen.</p>' : ''}
         <div class="drops">
           ${dropHtml('sistema')}
           ${dropHtml('fisico')}
@@ -2688,11 +2715,11 @@ async function getSupabase() {
     if (state.ui.view === 'historial') renderHistory();
     if (state.auth.user) {
       restoreDesdeNube().then(restaurado => {
-        if (restaurado) {
-          renderAll();
-          toast('Resumen de tu último corte cargado desde la nube.');
-        }
+        renderAll();
+        if (restaurado) toast('Resumen de tu último corte cargado desde la nube.');
       });
+    } else {
+      renderAll();
     }
   });
   state.auth.client = client;
@@ -2725,6 +2752,10 @@ async function bridgePortalSession(sb) {
         chunks.push(c);
       }
       if (chunks.length) value = chunks.join('');
+    }
+    // Respaldo: algunos flujos guardan la sesión en localStorage.
+    if (!value) {
+      try { value = localStorage.getItem(base) || null; } catch (e) { value = null; }
     }
     if (!value) return false;
 
@@ -3732,6 +3763,10 @@ function bindEvents() {
       const historialLink = e.target.closest('[data-view="historial"]');
       if (historialLink) {
         setView('historial');
+        return;
+      }
+      if (e.target.closest('[data-open-import]')) {
+        openImportModal();
         return;
       }
       const drop = e.target.closest('[data-drop]');

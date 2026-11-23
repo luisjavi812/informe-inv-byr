@@ -1389,9 +1389,36 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
 .corte-fecha-row { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
 .field--inline { max-width: 220px; }
 
+/* Pantalla de activación: sin datos y sin sesión */
+body.needs-auth .kpis,
+body.needs-auth .analytics,
+body.needs-auth #toolbar,
+body.needs-auth #sections { display: none !important; }
+
+.activate-card {
+  text-align: center;
+  padding: 34px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.activate-card__icon {
+  width: 54px; height: 54px;
+  border-radius: 16px;
+  display: grid; place-items: center;
+  background: var(--primary-soft);
+  color: var(--primary-ink);
+  margin-bottom: 4px;
+}
+.activate-card__icon svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.activate-card h3 { font-size: 19px; letter-spacing: -.02em; }
+.activate-card p { font-size: 13.5px; color: var(--ink-2); max-width: 52ch; }
+.activate-card .muted.small { font-size: 12px; }
+.activate-card__actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin: 6px 0 2px; }
+
 /* Aviso de comparación restaurada */
-.restore-note {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+.restore-note {  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
   background: var(--sel-bg);
   border: 1px solid var(--sel-border);
   border-radius: 14px;
